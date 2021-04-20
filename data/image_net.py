@@ -94,24 +94,40 @@ class ImageNetDataGenerator(Sequence):
         return np.clip((contrast*image[start_y:start_y+self.dim[1], start_x:start_x+self.dim[0], :] + brightness)/255.0, 0, 1)
 
     
-    def __getitem__(self, index):
+    def __getitem__(self, index, usage='inpainting'):
         'Generate one batch of data'
         # Generate indexes of the batch
         indices = self.indices[index*self.batch_size:(index+1)*self.batch_size]
         
         image = np.zeros((self.batch_size, self.n_channels, self.dim[1], self.dim[0]), np.float32)
-        classes = np.zeros((self.batch_size), dtype=np.long)
 
-        def get_data(n):
-            image[n,:,:,:] = np.transpose(self.get_image(indices[n]), (2, 0, 1))
-            classes[n] = self.classes[indices[n]]
+        if usage == 'classification':
+            classes = np.zeros((self.batch_size), dtype=np.long)
+
+            def get_data(n):
+                image[n,:,:,:] = np.transpose(self.get_image(indices[n]), (2, 0, 1))
+                classes[n] = self.classes[indices[n]]
+        elif usage == 'inpainting':
+            mask = np.zeros((self.batch_size, self.dim[1], self.dim[0]), np.float32)
+            masked = np.zeros((self.batch_size, self.n_channels, self.dim[1], self.dim[0]), np.float32)
+
+            def get_data(n):
+                img = self.get_image(indices[n])
+                masked_img = np.copy(img)
+
+                self.make_mask(mask[n,:,:], masked_img)
+
+                image[n,:,:,:] = np.transpose(img, [2,0,1])
+                masked = np.transpose(masked_img, [2,0,1])
         
         with ThreadPoolExecutor(max_workers=20) as pool:
             all_task = [pool.submit(get_data, n) for n in range(self.batch_size)]
             wait(all_task, return_when=ALL_COMPLETED)
         
-        
-        return image, classes
+        if usage == 'classification':
+            return image, classes
+        elif usage == 'inpainting':
+            return image, mask, masked
     
     def on_epoch_end(self):
         'Updates indexes after each epoch'
