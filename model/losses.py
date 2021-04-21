@@ -15,22 +15,52 @@ class PerceptualLoss(Module):
 
         return loss
 
+class TotalVariationLoss(Module):
+    def __init__(self, loss_weight=1):
+        self.loss_weight = loss_weight
+
+    def forward(self, x):
+        batch_size = x.size()[0]
+        h_x = x.size()[2]
+        w_x = x.size()[3]
+        count_h =  (x.size()[2]-1) * x.size()[3]
+        count_w = x.size()[2] * (x.size()[3] - 1)
+        h_tv = torch.pow((x[:,:,1:,:]-x[:,:,:h_x-1,:]),2).sum()
+        w_tv = torch.pow((x[:,:,:,1:]-x[:,:,:,:w_x-1]),2).sum()
+
+        return self.loss_weight*2*(h_tv/count_h+w_tv/count_w)/batch_size
+
 class ContentLoss(Module):
     def __init__(self):
-        self.weights = [6.0, 1.0, 0.05, 1.0, 1.0, 0.1]
+        self.loss_weights = [6.0, 1.0, 0.05, 1.0, 1.0, 0.1]
         self.vgg = VGG16()
+
+        self.tv_loss = TotalVariationLoss()
 
     def forward(self, original, mask, inpainted):
         composite = mask*original + (1.0 - mask)*inpainted
-        l1 = L1Loss()((1.0-mask)*original, (1.0-mask)*inpainted)
-        l2 = L1Loss()(mask*original, mask*inpainted)
+
+        loss = []
+
+        loss.append(L1Loss()((1.0-mask)*original, (1.0-mask)*inpainted))
+        loss.append(L1Loss()(mask*original, mask*inpainted))
 
         vgg_out = self.vgg(inpainted)
         vgg_gt = self.vgg(original)
         vgg_comp = self.vgg(composite)
 
+        loss.append(self.perceptual_loss(vgg_out, vgg_gt, vgg_comp))
+        loss.append(self.style_loss(vgg_out, vgg_gt))
+        loss.append(self.style_loss(vgg_comp, vgg_gt))
 
-        return self.weights[0]*self.L1()
+        loss.append(self.tv_loss(composite))
+
+        total_loss = 0.
+
+        for n in range(6):
+            total_loss += self.loss_weights[n]*loss[n]
+
+        return total_loss
 
     def perceptual_loss(self, vgg_out, vgg_gt, vgg_comp):
         loss = 0.
@@ -40,7 +70,7 @@ class ContentLoss(Module):
         return loss
 
     def style_loss(self, output, vgg_gt):
-        return
+        return L1Loss()(self.gram_matrix(output), self.gram_matrix(vgg_gt))
 
     def gram_matrix(tensor):
         #Unwrapping the tensor dimensions into respective variables i.e. batch size, distance, height and width 
