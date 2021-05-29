@@ -6,7 +6,7 @@ from model.vgg16 import VGG16
 
 class PerceptualLoss(Module):
     def __init__(self):
-        return
+        super(PerceptualLoss, self).__init__()
     
     def forward(self, vgg_out, vgg_gt, vgg_comp):
         loss = 0.
@@ -17,6 +17,8 @@ class PerceptualLoss(Module):
 
 class TotalVariationLoss(Module):
     def __init__(self, loss_weight=1):
+        super(TotalVariationLoss, self).__init__()
+
         self.loss_weight = loss_weight
 
     def forward(self, x):
@@ -32,6 +34,8 @@ class TotalVariationLoss(Module):
 
 class ContentLoss(Module):
     def __init__(self):
+        super(ContentLoss, self).__init__()
+        
         self.loss_weights = [6.0, 1.0, 0.05, 1.0, 1.0, 0.1]
         self.vgg = VGG16()
 
