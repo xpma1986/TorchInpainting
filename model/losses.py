@@ -34,7 +34,7 @@ class TotalVariationLoss(Module):
 
 class ContentLoss(Module):
     def __init__(self):
-        super(ContentLoss, self).__init__()
+        super(ContentLoss, self).__init()
         
         self.loss_weights = [6.0, 1.0, 0.05, 1.0, 1.0, 0.1]
         self.vgg = VGG16()

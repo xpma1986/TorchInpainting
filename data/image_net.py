@@ -9,13 +9,14 @@ from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 class ImageNetDataGenerator(Sequence):
     'Generates data for Keras'
-    def __init__(self, dir="images/image_net/ILSVRC2012_img_train", batch_size=8, dim=(512, 512), n_channels=3, num_classes=1000, shuffle=True):
+    def __init__(self, dir="images/image_net/ILSVRC2012_img_train", batch_size=8, dim=(512, 512), n_channels=3, num_classes=1000, shuffle=True, usage='inpainting'):
         'Initialization'
         self.dim = dim
         self.batch_size = batch_size
         self.n_channels = n_channels
         self.num_classes = num_classes
         self.shuffle = shuffle
+        self.usage = usage
 
         self.dir = dir
 
@@ -94,39 +95,42 @@ class ImageNetDataGenerator(Sequence):
         return np.clip((contrast*image[start_y:start_y+self.dim[1], start_x:start_x+self.dim[0], :] + brightness)/255.0, 0, 1)
 
     
-    def __getitem__(self, index, usage='inpainting'):
+    def __getitem__(self, index):
         'Generate one batch of data'
         # Generate indexes of the batch
         indices = self.indices[index*self.batch_size:(index+1)*self.batch_size]
         
         image = np.zeros((self.batch_size, self.n_channels, self.dim[1], self.dim[0]), np.float32)
 
-        if usage == 'classification':
+        if self.usage == 'classification':
             classes = np.zeros((self.batch_size), dtype=np.long)
 
             def get_data(n):
-                image[n,:,:,:] = np.transpose(self.get_image(indices[n]), (2, 0, 1))
+                image[n,:,:,:] = np.transpose(self.get_image(indices[n]), (2,0,1))
                 classes[n] = self.classes[indices[n]]
-        elif usage == 'inpainting':
-            mask = np.zeros((self.batch_size, self.dim[1], self.dim[0]), np.float32)
+        elif self.usage == 'inpainting':
+            mask = np.zeros((self.batch_size, 1, self.dim[1], self.dim[0]), np.float32)
             masked = np.zeros((self.batch_size, self.n_channels, self.dim[1], self.dim[0]), np.float32)
 
             def get_data(n):
                 img = self.get_image(indices[n])
                 masked_img = np.copy(img)
 
-                self.make_mask(mask[n,:,:], masked_img)
+                img_mask = np.zeros((self.dim[1], self.dim[0], 1), dtype=np.float32)
+
+                self.make_mask(img_mask, masked_img)
 
                 image[n,:,:,:] = np.transpose(img, [2,0,1])
-                masked = np.transpose(masked_img, [2,0,1])
+                masked[n,:,:,:] = np.transpose(masked_img, [2,0,1])
+                mask[n,:,:,:] = np.transpose(img_mask, [2,0,1])
         
         with ThreadPoolExecutor(max_workers=20) as pool:
             all_task = [pool.submit(get_data, n) for n in range(self.batch_size)]
             wait(all_task, return_when=ALL_COMPLETED)
         
-        if usage == 'classification':
+        if self.usage == 'classification':
             return image, classes
-        elif usage == 'inpainting':
+        elif self.usage == 'inpainting':
             return image, mask, masked
     
     def on_epoch_end(self):

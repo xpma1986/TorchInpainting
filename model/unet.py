@@ -4,7 +4,7 @@ from model.encoder import Encoder
 from model.decoder import Decoder
 
 class UNet(Module):
-    def __init__(self, shape_in=[3, 256, 256], shape_out=[3, 256, 256]):
+    def __init__(self, shape_in=[3, 512, 512], shape_out=[3, 512, 512]):
         self.shape_in = shape_in
         self.shape_out = shape_out
 
