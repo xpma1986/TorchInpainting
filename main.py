@@ -22,8 +22,8 @@ if __name__ == '__main__':
     max_epoch = 1000
     epoch0 = 0
 
-    train_data = ImageNetDataGenerator()
-    eval_data = ImageNetDataGenerator(dir='images/image_net/ILSVRC2012_img_val')
+    train_data = ImageNetDataGenerator(dir='/opt/ImageNet/data/ImageNet2012/ILSVRC2012_img_train', batch_size=16)
+    eval_data = ImageNetDataGenerator(dir='/opt/ImageNet/data/ImageNet2012/ILSVRC2012_img_val', batch_size=16)
 
     model = UNet(shape_in=[3,512,512], shape_out=[3,512,512])
     optimizer = Adam(model.parameters(), lr=0.00001)

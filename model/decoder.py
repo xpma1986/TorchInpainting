@@ -12,7 +12,7 @@ class Decoder(Module):
 
         for n in range(self.n_blks):
             filters_in = filters[n] + concat[n] if concat != None else filters[n]
-            blk_list.append(Block([filters_in, filters[n+1]], upsampling=True))
+            blk_list.append(Block([filters_in, filters[n+1]], scale_factor=2))
 
         self.blk_list = ModuleList(blk_list)
 

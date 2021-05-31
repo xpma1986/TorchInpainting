@@ -34,7 +34,7 @@ class TotalVariationLoss(Module):
 
 class ContentLoss(Module):
     def __init__(self):
-        super(ContentLoss, self).__init()
+        super(ContentLoss, self).__init__()
         
         self.loss_weights = [6.0, 1.0, 0.05, 1.0, 1.0, 0.1]
         self.vgg = VGG16()
@@ -74,15 +74,20 @@ class ContentLoss(Module):
         return loss
 
     def style_loss(self, output, vgg_gt):
-        return L1Loss()(self.gram_matrix(output), self.gram_matrix(vgg_gt))
+        loss = 0
+        
+        for o, g in zip(output, vgg_gt):
+            loss += L1Loss()(self.gram_matrix(o), self.gram_matrix(g))
 
-    def gram_matrix(tensor):
+        return loss
+
+    def gram_matrix(self, tensor):
         #Unwrapping the tensor dimensions into respective variables i.e. batch size, distance, height and width 
-        _, d, h, w=tensor.size() 
+        b, d, h, w = tensor.size() 
         #Reshaping data into a two dimensional of array or two dimensional of tensor
-        tensor=tensor.view(d, h*w)
+        tensor = tensor.view(b*d, h*w)
         #Multiplying the original tensor with its own transpose using torch.mm 
         #tensor.t() will return the transpose of original tensor
-        gram=torch.mm(tensor, tensor.t())
+        gram = torch.mm(tensor, tensor.t())
         #Returning gram matrix 
-        return gram
+        return gram.div(d*h*w)

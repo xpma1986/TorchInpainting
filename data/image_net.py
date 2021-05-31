@@ -124,7 +124,7 @@ class ImageNetDataGenerator(Sequence):
                 masked[n,:,:,:] = np.transpose(masked_img, [2,0,1])
                 mask[n,:,:,:] = np.transpose(img_mask, [2,0,1])
         
-        with ThreadPoolExecutor(max_workers=20) as pool:
+        with ThreadPoolExecutor(max_workers=96) as pool:
             all_task = [pool.submit(get_data, n) for n in range(self.batch_size)]
             wait(all_task, return_when=ALL_COMPLETED)
         
